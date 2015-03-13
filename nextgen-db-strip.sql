@@ -1,11 +1,76 @@
 /****************************************************************
 This will delete all but 10 patients from the system. 
 It will remove anything that is not directly related to the patients.
-to run this against a database.  do a find and replace all for 
-[targetDB] and replace it will your target database to be stripped
+to run this against a database.  
 -- NextGen Database Strip Utility
 -- Author:  Kevin Foster
--- Created: Oct 14, 2009 
+-- Created: Oct 14, 2009
+
+10.14.09 Created wrapper around Simon's script to anonymize
+  and then strip out all patients that aren't anonymized.  
+  This would allow a much smaller database. 
+
+1.21.10 Modifed the sig_event and image table handling to
+  truncate instead of delete all lines.  Speed increase gained
+  Also added some conditions to initialization process to 
+  prevent target database and selected database from being 
+  different.  Also added conditions to not allow prod to
+  accidentally be stripped.
+
+10.12.11 Several new enhancements to the strip process:  
+  1) Multiple occurrences of log file dumping occur during the
+  strip to keep the NextGen_Log physical file small.
+  2) Cleaned up error messages having to do with view/function 
+  deletes that could not be performed, so those tables are 
+  excluded from the strip process.
+  3) Cleaned up error messages for the encID/enc_id column to 
+  intelligently determine which delete command to use.  
+  4) Added section in the beginning to dump any backup tables 
+  (ie. tables that had been copied by nextgen for support issues)
+  5)  Added explicit database names to the dynamic sql to allow
+  for the script to be configured as a sql job.
+
+10.06.12 Performance enhancements:
+  1) Logic for disabling database triggers added prior to data 
+  stripping section to minimize the data I/O to execute the 
+  deletions.
+
+10.09.12 Code Refactor:
+  1) Optimizations required for overall performance of the 
+  query.  Code utilizes a method of exporting the desired 
+  data into a new table, truncating the existing table, then
+  inserting the desired data back into the original table.
+  2) verbose variable added to include as much or as little 
+  of the message log data.  Default is 1 which shows each 
+  table being modified as it happens.
+
+01.25.13 Testing and tuning
+  1) modified the db shrink step to use the shrinkfile 
+  command instead of the shrinkdatabase.  
+  2) removed NextGen_Log dumping because of error with full 
+  database recovery no longer supporting it.
+
+06.05.13 Formatting and bug fixing
+  1) Moved configuration setting @verbose to the top of the
+  script.
+  2) Combined @verbose conditional printing into BEGIN/END
+  statements.
+  3) Found that ICS tables and EPM truncation commands were
+  not assigned to exec the dynamic sql.  Added code to do so.
+  4) Added additional @verbose logging for some dynamic SQL 
+  commands that would not print out when desired.
+  5) Standardized all dynamic sql commands to use @sql variable.
+  6) Added additional @verbose setting for step output.
+  
+09.03.13 Index procedure parameterization and bug fix
+  1) Added config option for calling NextGen's custom index 
+  update stored proc.
+  2) Changed backup table drop process to account for non-dbo 
+  owned tables to be dropped and not error out.
+  
+04.07.14 Parameterization
+  1) Added parameter to allow script to be used to anonymize 
+  patient data only and skip the data strip step.  
 ****************************************************************/
 --CONFIGURE INDEX UPDATE
 DECLARE @index_update CHAR(1) = 'N'
@@ -160,6 +225,7 @@ BEGIN
 END
 ELSE	
 BEGIN
+
 	IF @verbose > 0
 	BEGIN	
 		PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') Temp Backup Table Cleanup'
@@ -223,7 +289,14 @@ BEGIN
 
 	TRUNCATE TABLE images
 	--remove patient image references
-	UPDATE person SET image_id=NULL WHERE image_id IS NULL
+	WHILE 1=1
+	BEGIN
+		UPDATE TOP(1000) person SET image_id=NULL
+		WHERE image_id IS NOT NULL
+	
+		IF @@ROWCOUNT=0 
+			BREAK
+	END
 
 	IF @verbose > 0 
 	BEGIN
@@ -256,7 +329,7 @@ BEGIN
 	BEGIN
 		IF @verbose > 1 print '('+CONVERT(VARCHAR(50),GETDATE(),121)+') Stripping table: '+@table
 		--extract desired data prior to truncate
-		SELECT @sql='SELECT * INTO '+@table+@bak_suffix+' FROM '+@table+' WHERE '+@col+' IN (SELECT person_id FROM [_DOHC_Persons_to_Keep] (nolock))'		--add condition here
+		SELECT @sql='SELECT * INTO '+@table+@bak_suffix+' FROM '+@table+' WHERE '+@col+' IN (SELECT person_id FROM [_DOHC_Persons_to_Keep] (nolock))'
 		IF @verbose > 2 PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') '+@sql
 		EXEC (@sql)
 		
@@ -315,7 +388,7 @@ BEGIN
 	BEGIN
 		IF @verbose > 1 print '('+CONVERT(VARCHAR(50),GETDATE(),121)+') Stripping table: '+@table
 		--extract desired data prior to truncate
-		SELECT @sql='SELECT * INTO '+@table+@bak_suffix+' FROM '+@table+' WHERE claim_ID IN (SELECT claim_ID FROM claims (nolock))'		--add condition here
+		SELECT @sql='SELECT * INTO '+@table+@bak_suffix+' FROM '+@table+' WHERE claim_ID IN (SELECT claim_ID FROM claims (nolock))'
 		IF @verbose > 2 PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') '+@sql
 		EXEC (@sql)
 		
@@ -374,7 +447,7 @@ BEGIN
 	BEGIN
 		IF @verbose > 1 print '('+CONVERT(VARCHAR(50),GETDATE(),121)+') Stripping table: '+@table
 		--extract desired data prior to truncate
-		SELECT @sql='SELECT * INTO '+@table+@bak_suffix+' FROM '+@table+' WHERE '+@col+' IN (SELECT enc_ID FROM ..[patient_encounter] (nolock))'		--add condition here
+		SELECT @sql='SELECT * INTO '+@table+@bak_suffix+' FROM '+@table+' WHERE '+@col+' IN (SELECT enc_ID FROM ..[patient_encounter] (nolock))'
 		IF @verbose > 2 PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') '+@sql
 		EXEC (@sql)
 		
@@ -480,7 +553,7 @@ BEGIN
 		IF @verbose > 1 PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') Stripping table: '+@table
 
 		--extract desired data prior to truncate
-		SELECT @sql='SELECT * INTO '+@table+@bak_suffix+' FROM '+@table+' WHERE trans_ID IN (SELECT trans_ID FROM transactions (nolock))'		--add condition here
+		SELECT @sql='SELECT * INTO '+@table+@bak_suffix+' FROM '+@table+' WHERE trans_ID IN (SELECT trans_ID FROM transactions (nolock))'
 		IF @verbose > 2 PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') '+@sql
 		EXEC (@sql)
 		
