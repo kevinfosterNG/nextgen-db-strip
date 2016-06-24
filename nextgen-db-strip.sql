@@ -88,6 +88,7 @@ How much needs to show up in the message output?
 
 DECLARE @prac_id varchar(5)
 DECLARE @table VARCHAR(100)
+DECLARE @schema_owner VARCHAR(100)
 DECLARE @col VARCHAR(12)
 DECLARE @bak_suffix VARCHAR(25)= '_appdev_strip_bak'
 DECLARE @sql VARCHAR(MAX)
@@ -234,21 +235,31 @@ BEGIN
 
 	/*Drop table copy backups (ex. table_bak_DATE)*/
 	DECLARE dbTable CURSOR FOR
-	SELECT '['+ SCHEMA_NAME(schema_id) + '].[' + st.name + ']'
-	FROM sys.tables st
-	WHERE st.name like '%bak%' OR st.name like '%bkup%' OR st.name like '%backkup_%'
-	ORDER BY 1
+	SELECT s.name, o.name
+	FROM sys.tables t
+	INNER JOIN sys.schemas s ON t.schema_id=s.schema_id
+	INNER JOIN sys.objects o ON t.name=o.name
+	INNER join sys.partitions p on p.object_id = o.object_id
+	INNER join sys.allocation_units a on p.partition_id = a.container_id
+	WHERE o.type = 'U' AND t.create_date < getdate()-90
+	--INCLUDE TABLES:
+	AND (t.name like '%bak%' OR t.name LIKE '%bkp%' OR t.name LIKE '%backup%' OR t.name like '%bkup%' OR t.name like '%[_]old' OR ISNUMERIC(RIGHT(t.name, 4))=1)
+	--EXCLUDE TABLES:
+	AND (t.name NOT LIKE 'ndc_reuse_statistics%')
+	AND o.name NOT IN (SELECT table_name FROM ng_indexes)
+	GROUP BY s.name, t.name, o.name, t.create_date, t.modify_date
+	ORDER BY s.name, t.name
 
 	OPEN dbTable
-	FETCH next FROM dbTable INTO @table
+	FETCH next FROM dbTable INTO @schema_owner, @table
 
 	WHILE @@FETCH_STATUS = 0
 	BEGIN
 		IF @verbose > 1 PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') Dropping backup table: '+@table
-		SELECT @sql = 'DROP TABLE '+@table
+		SELECT @sql='DROP TABLE ['+@schema_owner+'].['+@table+']'
 		IF @verbose > 2 PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') '+@sql
 		EXEC (@sql)
-	FETCH next FROM dbTable INTO @table
+	FETCH next FROM dbTable INTO @schema_owner, @table
 	END
 	CLOSE dbtable
 	DEALLOCATE dbTable
@@ -319,7 +330,7 @@ BEGIN
 	/*Cleanup tables containing person data*/
 	DECLARE cur CURSOR FOR
 	SELECT so.name, sc.name FROM sysobjects so INNER JOIN syscolumns sc ON so.id=sc.id
-	WHERE sc.name IN ('person_id','pt_id') and so.name !='nxmd_xml_data_enterp_cnfg' and so.name !='_DOHC_persons_to_keep' and so.xtype!='V' AND sc.length>=16
+	WHERE sc.name IN ('person_id','pt_id') and so.name !='nxmd_xml_data_enterp_cnfg' and so.name !='_DOHC_persons_to_keep' and so.xtype!='V' AND sc.length>=16 and so.type='U'
 	ORDER BY 1
 
 	OPEN cur
