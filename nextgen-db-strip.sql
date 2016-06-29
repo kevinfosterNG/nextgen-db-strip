@@ -75,7 +75,7 @@ to run this against a database.
 --CONFIGURE INDEX UPDATE
 DECLARE @index_update CHAR(1) = 'N'
 --CONFIGURE THE ANONYMIZE&STRIP (Y = do both, N = only anonymize)
-DECLARE @anon_and_strip CHAR(1) = 'N'
+DECLARE @anon_and_strip CHAR(1) = 'Y'
 --CONFIGURE VERBOSE LOGGING
 DECLARE @verbose INT = 1
 /****************************************************************
@@ -256,7 +256,7 @@ BEGIN
 	WHILE @@FETCH_STATUS = 0
 	BEGIN
 		IF @verbose > 1 PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') Dropping backup table: '+@table
-		SELECT @sql='DROP TABLE ['+@schema_owner+'].['+@table+']'
+		SELECT @sql = 'DROP TABLE ['+@schema_owner+'].['+@table+']'
 		IF @verbose > 2 PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') '+@sql
 		EXEC (@sql)
 	FETCH next FROM dbTable INTO @schema_owner, @table
@@ -323,6 +323,90 @@ BEGIN
 	BEGIN
 		PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') Done.'+CHAR(10)
 		PRINT '======================================================'
+		PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') Ancillary product configuration'
+		PRINT '======================================================'
+	END
+	----------------------------------
+	--Per NextGen Article #000021617--
+	----------------------------------
+	--ePrescribing
+	TRUNCATE TABLE surescripts_config
+	DELETE FROM configuration_options WHERE app_name LIKE '%ePrescribing%'
+	--Patient Portal
+	TRUNCATE TABLE ngweb_account_settings
+	TRUNCATE TABLE ngweb_appointment_req
+	TRUNCATE TABLE ngweb_communications
+	TRUNCATE TABLE ngweb_enrollments
+	TRUNCATE TABLE ngweb_evaluation_req
+	TRUNCATE TABLE ngweb_grant
+	TRUNCATE TABLE ngweb_imh_question_series
+	TRUNCATE TABLE ngweb_imh_question_state
+	TRUNCATE TABLE ngweb_msg_sub_categories
+	TRUNCATE TABLE ngweb_online_identities
+	TRUNCATE TABLE ngweb_pat_alt_pharm
+	TRUNCATE TABLE ngweb_payment_prv_config
+	TRUNCATE TABLE ngweb_rout_tree
+	TRUNCATE TABLE NGWEB_STATEMENT_PAYMENT
+	TRUNCATE TABLE nxmd_enrollment_xref
+	TRUNCATE TABLE nxmd_enterp_practice_xref
+	TRUNCATE TABLE nxmd_export
+	TRUNCATE TABLE nxmd_import
+	TRUNCATE TABLE nxmd_loc_systemxref
+	TRUNCATE TABLE nxmd_med_renewals
+	TRUNCATE TABLE nxmd_medication_request_log
+	TRUNCATE TABLE nxmd_message_reject
+	TRUNCATE TABLE nxmd_onetime_profile
+	TRUNCATE TABLE nxmd_pat_systemxref
+	TRUNCATE TABLE nxmd_pat_template_import
+	TRUNCATE TABLE nxmd_person_policy
+	TRUNCATE TABLE nxmd_prv_systemxref
+	TRUNCATE TABLE nxmd_template_export_policy
+	TRUNCATE TABLE nxmd_template_set_assignments
+	TRUNCATE TABLE nxmd_template_sets
+	TRUNCATE TABLE nxmd_practice_systemxref
+	TRUNCATE TABLE ngweb_appointment_resp
+	TRUNCATE TABLE ngweb_comm_attach_xref
+	TRUNCATE TABLE ngweb_comm_recpts
+	TRUNCATE TABLE ngweb_routing_list
+	TRUNCATE TABLE ngweb_account
+	TRUNCATE TABLE ngweb_person
+	TRUNCATE TABLE ngweb_person_address
+	TRUNCATE TABLE ngweb_phone_number
+	TRUNCATE TABLE ngweb_email_address
+	TRUNCATE TABLE nxmd_location
+	TRUNCATE TABLE nxmd_template_set_data
+	TRUNCATE TABLE nxmd_template_set_members
+	TRUNCATE TABLE nxmd_practice_systemxref
+	TRUNCATE TABLE nxmd_practice_web_settings
+	TRUNCATE TABLE nxmd_practice_web_text
+	TRUNCATE TABLE nxmd_practices
+	TRUNCATE TABLE nxmd_systems
+	TRUNCATE TABLE nxmd_enterp_practice_xref
+	TRUNCATE TABLE nxmd_enterprise
+	TRUNCATE TABLE nxmd_enterprise_system_xref
+	TRUNCATE TABLE nxmd_export_capture
+	--Formularies
+	TRUNCATE TABLE ng_rxh_altformu_med_data
+	TRUNCATE TABLE ng_rxh_copay_drug_specific
+	TRUNCATE TABLE ng_rxh_copay_summary
+	TRUNCATE TABLE ng_rxh_coverage_data
+	TRUNCATE TABLE ng_rxh_coverage_mstr
+	TRUNCATE TABLE ng_rxh_coverage_qty_limit
+	TRUNCATE TABLE ng_rxh_coverage_qty_limits
+	TRUNCATE TABLE ng_rxh_coverage_res_links
+	TRUNCATE TABLE ng_rxh_coverage_step_data
+	TRUNCATE TABLE ng_rxh_formulary_med_data
+	TRUNCATE TABLE ng_rxh_formulary_med_data_UPD
+	TRUNCATE TABLE ng_rxh_formulary_mstr
+
+	--Fix nagging PDR date error on med module
+	INSERT INTO surescripts_config (config_id, config_value, created_by, modified_by, create_timestamp, modify_timestamp)
+	VALUES ('PDR_LAST_FILE_DATE_TIME', GETDATE()+999, 0,0,GETDATE(),GETDATE())
+
+	IF @verbose > 0 
+	BEGIN
+		PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') Done.'+CHAR(10)
+		PRINT '======================================================'
 		PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') Patient specific information'
 		PRINT '======================================================'
 	END
@@ -330,7 +414,7 @@ BEGIN
 	/*Cleanup tables containing person data*/
 	DECLARE cur CURSOR FOR
 	SELECT so.name, sc.name FROM sysobjects so INNER JOIN syscolumns sc ON so.id=sc.id
-	WHERE sc.name IN ('person_id','pt_id') and so.name !='nxmd_xml_data_enterp_cnfg' and so.name !='_DOHC_persons_to_keep' and so.xtype!='V' AND sc.length>=16 and so.type='U'
+	WHERE sc.name IN ('person_id','pt_id') and so.name !='nxmd_xml_data_enterp_cnfg' and so.name !='_DOHC_persons_to_keep' and so.xtype!='V' AND sc.length>=16  and so.type='U'
 	ORDER BY 1
 
 	OPEN cur
