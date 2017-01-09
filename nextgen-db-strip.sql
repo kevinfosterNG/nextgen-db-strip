@@ -71,9 +71,13 @@ to run this against a database.
 04.07.14 Parameterization
   1) Added parameter to allow script to be used to anonymize 
   patient data only and skip the data strip step.  
+  
+01.17.17 Back table removal
+  1) Improved inclusion criteria to catch more backup tables 
+  created by NG support's newer naming convention  
 ****************************************************************/
 --CONFIGURE INDEX UPDATE
-DECLARE @index_update CHAR(1) = 'N'
+DECLARE @index_update CHAR(1) = 'Y'
 --CONFIGURE THE ANONYMIZE&STRIP (Y = do both, N = only anonymize)
 DECLARE @anon_and_strip CHAR(1) = 'Y'
 --CONFIGURE VERBOSE LOGGING
@@ -241,7 +245,7 @@ BEGIN
 	INNER JOIN sys.objects o ON t.name=o.name
 	INNER join sys.partitions p on p.object_id = o.object_id
 	INNER join sys.allocation_units a on p.partition_id = a.container_id
-	WHERE o.type = 'U' AND t.create_date < getdate()-90
+	WHERE o.type = 'U' AND t.create_date < getdate()
 	--INCLUDE TABLES:
 	AND (t.name like '%bak%' OR t.name LIKE '%bkp%' OR t.name LIKE '%backup%' OR t.name like '%bkup%' OR t.name like '%[_]old' OR ISNUMERIC(RIGHT(t.name, 4))=1)
 	--EXCLUDE TABLES:
@@ -384,7 +388,7 @@ BEGIN
 	TRUNCATE TABLE nxmd_enterp_practice_xref
 	TRUNCATE TABLE nxmd_enterprise
 	TRUNCATE TABLE nxmd_enterprise_system_xref
-	TRUNCATE TABLE nxmd_export_capture
+	--TRUNCATE TABLE nxmd_export_capture
 	--Formularies
 	TRUNCATE TABLE ng_rxh_altformu_med_data
 	TRUNCATE TABLE ng_rxh_copay_drug_specific
