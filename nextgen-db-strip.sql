@@ -97,6 +97,7 @@ DECLARE @col VARCHAR(12)
 DECLARE @bak_suffix VARCHAR(25)= '_appdev_strip_bak'
 DECLARE @sql VARCHAR(MAX)
 DECLARE @dynamic_columns VARCHAR(MAX)
+DECLARE @fname VARCHAR(100)
 
 IF @verbose > 0 
 BEGIN
@@ -276,17 +277,16 @@ BEGIN
 		PRINT '======================================================'
 	END
 
-	DECLARE @tableName NVARCHAR(500)
 	DECLARE cur CURSOR FOR 
 	SELECT name AS tbname FROM sysobjects WHERE id IN(SELECT parent_obj FROM sysobjects WHERE xtype='tr')
 	OPEN cur
-	FETCH next FROM cur INTO @tableName
+	FETCH next FROM cur INTO @table
 	WHILE @@fetch_status = 0
 	BEGIN
-		SET @sql ='ALTER TABLE '+ @tableName + ' DISABLE TRIGGER ALL'
+		SET @sql ='ALTER TABLE '+ @table + ' DISABLE TRIGGER ALL'
 		IF @verbose > 2 PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') '+@sql
 		EXEC (@sql)
-		FETCH next FROM cur INTO @tableName
+		FETCH next FROM cur INTO @table
 	END
 	CLOSE cur
 	DEALLOCATE cur
@@ -729,7 +729,6 @@ BEGIN
 	END
 		
 	--Reclaim open space
-	DECLARE @fname VARCHAR(100)
 	DECLARE cur CURSOR FOR
 	SELECT name FROM sys.database_files
 	ORDER BY file_id
@@ -739,7 +738,7 @@ BEGIN
 
 	WHILE @@FETCH_STATUS = 0
 	BEGIN
-		SELECT @sql = 'DBCC SHRINKFILE (N'''+@fname+''', 1)'
+		SELECT @sql = 'DBCC SHRINKFILE (N'''+@fname+''', 1) WITH NO_INFOMSGS'
 		IF @verbose > 2 PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') '+@sql
 		EXEC (@sql)
 	FETCH next FROM cur INTO @fname
@@ -759,13 +758,13 @@ BEGIN
 	DECLARE cur CURSOR FOR 
 	SELECT name AS tbname FROM sysobjects WHERE id IN(SELECT parent_obj FROM sysobjects WHERE xtype='tr')
 	OPEN cur
-	FETCH next FROM cur INTO @tableName
+	FETCH next FROM cur INTO @table
 	WHILE @@fetch_status = 0
 	BEGIN
-		SET @sql ='ALTER TABLE '+ @tableName + ' ENABLE TRIGGER ALL'
+		SET @sql ='ALTER TABLE '+ @table + ' ENABLE TRIGGER ALL'
 		IF @verbose > 2 PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') '+@sql
 		EXEC (@sql)
-		FETCH next FROM cur INTO @tableName
+		FETCH next FROM cur INTO @table
 	END
 	CLOSE cur
 	DEALLOCATE cur
