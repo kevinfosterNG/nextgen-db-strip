@@ -303,16 +303,7 @@ BEGIN
 	END
 
 	TRUNCATE TABLE images
-	--remove patient image references
-	WHILE 1=1
-	BEGIN
-		UPDATE TOP(1000) person SET image_id=NULL
-		WHERE image_id IS NOT NULL
 	
-		IF @@ROWCOUNT=0 
-			BREAK
-	END
-
 	IF @verbose > 0 
 	BEGIN
 		PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') Done.'+CHAR(10)
@@ -466,6 +457,16 @@ BEGIN
 	CLOSE cur
 	DEALLOCATE cur
 
+	--remove patient image references
+	WHILE 1=1
+	BEGIN
+		UPDATE TOP(1000) person SET image_id=NULL
+		WHERE image_id IS NOT NULL
+	
+		IF @@ROWCOUNT=0 
+			BREAK
+	END
+
 	IF @verbose > 0 
 	BEGIN
 		PRINT '('+CONVERT(VARCHAR(50),GETDATE(),121)+') Done.'+CHAR(10)
@@ -535,7 +536,7 @@ BEGIN
 	/*Clear encounter information*/
 	DECLARE cur CURSOR FOR
 	SELECT so.name, sc.name FROM sysobjects so INNER JOIN syscolumns sc ON so.id=sc.id
-	WHERE so.id NOT IN (select id FROM syscolumns where name = 'person_id') and so.name NOT IN ('patient_encounter','proctrig_xref') and sc.name IN ('encid','enc_id','enct_id') and so.xtype!='V'
+	WHERE so.id NOT IN (select id FROM syscolumns where name = 'person_id') and so.name NOT IN ('patient_encounter','proctrig_xref','proctrig_xref_kuu') and sc.name IN ('encid','enc_id','enct_id') and so.xtype!='V'
 	ORDER BY 1
 
 	OPEN cur
