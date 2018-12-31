@@ -331,7 +331,7 @@ BEGIN
 	TRUNCATE TABLE ngweb_account_settings
 	TRUNCATE TABLE ngweb_appointment_req
 	TRUNCATE TABLE ngweb_communications
-	TRUNCATE TABLE ngweb_enrollments
+	--TRUNCATE TABLE ngweb_enrollments		--#todo   Cannot TRUNCATE TABLE 'ngweb_enrollments' because it is being referenced by object 'ngweb_vw_userpatlist'.
 	TRUNCATE TABLE ngweb_evaluation_req
 	TRUNCATE TABLE ngweb_grant
 	TRUNCATE TABLE ngweb_imh_question_series
@@ -374,7 +374,7 @@ BEGIN
 	TRUNCATE TABLE nxmd_practice_systemxref
 	TRUNCATE TABLE nxmd_practice_web_settings
 	TRUNCATE TABLE nxmd_practice_web_text
-	TRUNCATE TABLE nxmd_practices
+	--TRUNCATE TABLE nxmd_practices		--#todo Cannot TRUNCATE TABLE 'nxmd_practices' because it is being referenced by object 'ngweb_vw_userpatlist'.
 	TRUNCATE TABLE nxmd_systems
 	TRUNCATE TABLE nxmd_enterp_practice_xref
 	TRUNCATE TABLE nxmd_enterprise
@@ -409,7 +409,7 @@ BEGIN
 	/*Cleanup tables containing person data*/
 	DECLARE cur CURSOR FOR
 	SELECT so.name, sc.name FROM sysobjects so INNER JOIN syscolumns sc ON so.id=sc.id
-	WHERE sc.name IN ('person_id','pt_id') and so.name NOT IN ('nxmd_xml_data_enterp_cnfg','_DOHC_persons_to_keep','intrf_queue') and so.xtype!='V' AND sc.length>=16  and so.type='U'
+	WHERE sc.name IN ('person_id','pt_id') and so.name NOT IN ('nxmd_xml_data_enterp_cnfg','_DOHC_persons_to_keep','intrf_queue','ngweb_enrollments','nxmd_practices','user_person_filter') and so.xtype!='V' AND sc.length>=16  and so.type='U'
 
 	OPEN cur
 	FETCH next FROM cur INTO @table, @col
