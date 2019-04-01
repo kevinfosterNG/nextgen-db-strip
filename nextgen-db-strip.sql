@@ -409,7 +409,7 @@ BEGIN
 	/*Cleanup tables containing person data*/
 	DECLARE cur CURSOR FOR
 	SELECT so.name, sc.name FROM sysobjects so INNER JOIN syscolumns sc ON so.id=sc.id
-	WHERE sc.name IN ('person_id','pt_id') and so.name NOT IN ('nxmd_xml_data_enterp_cnfg','_DOHC_persons_to_keep','intrf_queue','ngweb_enrollments','nxmd_practices','user_person_filter') and so.xtype!='V' AND sc.length>=16  and so.type='U'
+	WHERE sc.name IN ('person_id','pt_id') and so.name NOT IN ('nxmd_xml_data_enterp_cnfg','_DOHC_persons_to_keep','intrf_queue','ngweb_enrollments','nxmd_practices','user_person_filter','intrf_optical_scan') and so.xtype!='V' AND sc.length>=16  and so.type='U'
 
 	OPEN cur
 	FETCH next FROM cur INTO @table, @col

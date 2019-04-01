@@ -30,4 +30,5 @@ How much needs to show up in the message output?
 | 5.8.3 | ![Passing](https://raw.githubusercontent.com/travis-ci/travis-api/master/public/images/result/passing.png) |
 | 5.9.0 | ![Passing](https://raw.githubusercontent.com/travis-ci/travis-api/master/public/images/result/passing.png) |
 | 5.9.1 | ![Passing](https://raw.githubusercontent.com/travis-ci/travis-api/master/public/images/result/passing.png) |
-| 5.9.2 | ![Unknown](https://raw.githubusercontent.com/travis-ci/travis-api/master/public/images/result/unknown.png) |
+| 5.9.2 | ![Passing](https://raw.githubusercontent.com/travis-ci/travis-api/master/public/images/result/passing.png) |
+| 5.9.3 | ![Unknown](https://raw.githubusercontent.com/travis-ci/travis-api/master/public/images/result/unknown.png) |
